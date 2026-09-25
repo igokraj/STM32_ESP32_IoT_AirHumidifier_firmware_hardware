@@ -11,10 +11,11 @@
 // User .h files
 #include "UART/uart.h"
 #include "WIFI/wifi.h"
-
-#define ECHO_TASK_STACK_SIZE   4096
+#include "MQTT/mqtt.h"
 
 static const char *TAG = "AirHumidifier";
+
+
 
 void app_main(void)
 {
@@ -29,9 +30,22 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
 
-    xTaskCreate(echo_task, "uart_echo_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
+    uart_init();
 
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    ESP_LOGI(TAG, "ESP_WIFI_START");
     wifi_init_sta();
+
+    ESP_LOGI(TAG, "ESP_MQTT_START");
+    ESP_ERROR_CHECK(mqtt_app_start());
+
+    char stm32_message[128];
+
+    while (1) {
+        int len = uart_receive_message(stm32_message, sizeof(stm32_message));
+        if (len > 0) {
+        esp_publish_data(stm32_message, len);
+        }
+    }
+
 }

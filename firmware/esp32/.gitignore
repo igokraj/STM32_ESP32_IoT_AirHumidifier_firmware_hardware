@@ -59,5 +59,6 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 
-# Passes
+# Passes, Certificates
 secrets.h
+Cert
