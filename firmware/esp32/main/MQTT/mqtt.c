@@ -21,17 +21,21 @@
 #include "mqtt_client.h"
 #include "esp_err.h"
 #include "driver/gpio.h"
+#include "cJSON.h"
 
 // User .h files
 #include "secrets.h"
 #include "MQTT/mqtt.h"
+#include "UART/uart.h"
+
+#define MQTT_JSON_MAX_LEN 128
 
 #define MQTT_TOPIC_RECEIVE  "humidifier/" AWS_IOT_CLIENT_ID "/cmd"
 #define MQTT_TOPIC_PUBLISH  "humidifier/" AWS_IOT_CLIENT_ID "/data"
 
-QueueHandle_t mqtt_queue;
-
 esp_mqtt_client_handle_t client = NULL;
+
+
 
 static const char *TAG = "mqtt";
 
@@ -44,6 +48,21 @@ static void log_error_if_nonzero(const char *message, int error_code)
     if (error_code != 0) {
         ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
     }
+}
+
+/* Checks only if the text is a correct JSON object (no content check) */
+static bool json_is_valid(const char *data, int len)
+{
+    if (data == NULL || len <= 0 || len > MQTT_JSON_MAX_LEN) {
+        return false;
+    }
+    cJSON *root = cJSON_ParseWithLength(data, len);
+    if (root == NULL) {
+        return false;
+    }
+    bool is_object = cJSON_IsObject(root);
+    cJSON_Delete(root);
+    return is_object;
 }
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -69,12 +88,20 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED");
         break;
     case MQTT_EVENT_DATA: {
-
-
-
-
-
-        
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        /* Only complete messages are handled: commands are short, so they always fit in one chunk */
+        if (event->data_len != event->total_data_len) {
+            ESP_LOGW(TAG, "Fragmented message dropped");
+            break;
+        }
+        if (!json_is_valid(event->data, event->data_len)) {
+            ESP_LOGW(TAG, "Invalid JSON dropped");
+            break;
+        }
+        /* JSON is correct, forward it to STM32 as a single line */
+        if (uart_send_message(event->data, event->data_len) != ESP_OK) {
+            ESP_LOGE(TAG, "Sending to STM32 failed");
+        }
         break;
     }
     case MQTT_EVENT_ERROR:
@@ -92,22 +119,24 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-esp_err_t esp_publish_hum(int hum, int rpm) {
+// esp_err_t esp_publish_data(int hum, int rpm) {
 
-    char json_buffer[64];
-    int len = snprintf(json_buffer, sizeof(json_buffer), "{\"Humidity\": \"%d\", \"RPM\": \"%d\"}", hum, rpm);
+//     char json_buffer[64];
+//     int len = snprintf(json_buffer, sizeof(json_buffer), "{\"Humidity\": \"%d\", \"RPM\": \"%d\"}", hum, rpm);
 
-    if (len < 0 || len >= sizeof(json_buffer)) {
-        return ESP_FAIL;
-    }
-    int msg = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH, json_buffer, len, 0, 0);
+//     if (len < 0 || len >= sizeof(json_buffer)) {
+//         return ESP_FAIL;
+//     }
+//     int msg = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH, json_buffer, len, 0, 0);
 
-    if (msg < 0) {
-        return ESP_FAIL;
-    }
+//     if (msg < 0) {
+//         return ESP_FAIL;
+//     }
 
-    return ESP_OK;
-}
+//     return ESP_OK;
+// }
+
+
 
 esp_err_t mqtt_app_start(void)
 {
@@ -118,11 +147,6 @@ esp_err_t mqtt_app_start(void)
         .credentials.authentication.certificate = device_pem_key,
         .credentials.authentication.key = private_pem_key,
     };
-
-    mqtt_queue = xQueueCreate(MQTT_QUEUE_LEN, sizeof(mqtt_msg_t));
-    if (mqtt_queue == NULL) {
-        return ESP_FAIL;
-    }
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     if (client == NULL) {

@@ -13,9 +13,9 @@
 #include "WIFI/wifi.h"
 #include "MQTT/mqtt.h"
 
-#define ECHO_TASK_STACK_SIZE   4096
-
 static const char *TAG = "AirHumidifier";
+
+
 
 void app_main(void)
 {
@@ -30,11 +30,13 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
 
-    xTaskCreate(echo_task, "uart_echo_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
+    uart_init();
 
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    ESP_LOGI(TAG, "ESP_WIFI_START");
     wifi_init_sta();
 
+    ESP_LOGI(TAG, "ESP_MQTT_START");
     ESP_ERROR_CHECK(mqtt_app_start());
+
 }

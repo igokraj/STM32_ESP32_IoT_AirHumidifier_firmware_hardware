@@ -8,12 +8,8 @@
 #include "esp_log.h"
 #include "uart.h"
 
-
-static const char *TAG = "UART TEST";
-
-void echo_task(void *arg)
+void uart_init(void)
 {
-
 const uart_port_t uart_num = UART_NUM_1;
 
 const int uart_buffer_size = (1024 * 2);
@@ -34,13 +30,14 @@ ESP_ERROR_CHECK(uart_set_pin(uart_num, 17, 18, UART_PIN_NO_CHANGE,
 // Install UART driver 
 ESP_ERROR_CHECK(uart_driver_install(uart_num, uart_buffer_size, uart_buffer_size, 0, NULL, 0));
 
-    uint8_t data[128];
+}
 
-    while (1) {
-        int len = uart_read_bytes(uart_num, data, sizeof(data) - 1, pdMS_TO_TICKS(100));
-        if (len > 0) {
-            data[len] = '\0';
-            ESP_LOGI(TAG, "Odebrano %d bajtow: %s", len, (char *)data);
-        }
+// Send JSON to STM32 followed by a "\n" character, so the STM knows where the message ends
+esp_err_t uart_send_message(const char *data, size_t len)
+{
+    if (uart_write_bytes(UART_NUM_1, data, len) < 0 ||
+        uart_write_bytes(UART_NUM_1, "\n", 1) < 0) {
+        return ESP_FAIL;
     }
+    return ESP_OK;
 }
