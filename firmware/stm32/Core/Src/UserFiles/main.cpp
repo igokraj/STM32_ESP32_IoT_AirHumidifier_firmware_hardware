@@ -82,9 +82,24 @@ void app_main() {
     Humidifier AirHumidifier(50.0f); // Set inicialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
 
-    while (true) {
+    while (1) {
 
-        // read sensors before updateStatus()
+        uint8_t sensorFails = 0;
+
+        AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
+
+        float hum = HTU21D.readHumidity();
+        if (hum == -1.0f) {
+            if (sensorFails < 3)
+            sensorFails += 1;
+        }
+        else {
+            sensorFails = 0;
+            AirHumidifier.setCurrentHum(hum);
+        }
+
+        AirHumidifier.setSensorFailed(sensorFails >= 3);
+
         AirHumidifier.setCurrentHum(HTU21D.readHumidity());
 
         AirHumidifier.updateStatus();
