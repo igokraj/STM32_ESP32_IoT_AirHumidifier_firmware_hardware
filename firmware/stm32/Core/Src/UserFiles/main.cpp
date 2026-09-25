@@ -3,6 +3,7 @@
 #include "main.h"
 #include "i2c.h"
 #include "humiditySensor.hpp"
+#include "iwdg.h"
 
 enum class SystemStatus_t {
     Waiting,
@@ -103,6 +104,8 @@ void app_main() {
         AirHumidifier.setCurrentHum(HTU21D.readHumidity());
 
         AirHumidifier.updateStatus();
+
+        HAL_IWDG_Refresh(&hiwdg);
 
     }
 }
