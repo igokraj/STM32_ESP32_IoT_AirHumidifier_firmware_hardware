@@ -11,6 +11,7 @@
 // User .h files
 #include "UART/uart.h"
 #include "WIFI/wifi.h"
+#include "MQTT/mqtt.h"
 
 #define ECHO_TASK_STACK_SIZE   4096
 
@@ -34,4 +35,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
+
+    ESP_ERROR_CHECK(mqtt_app_start());
 }
