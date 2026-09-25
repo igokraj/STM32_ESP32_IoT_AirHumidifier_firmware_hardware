@@ -30,6 +30,59 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     if (huart == espUartReceiver.handle()) espUartReceiver.Receive();
 }
 
+
+
+/*
+PWM (%)  |  RPM
+0           0
+20          700
+40          1400
+60          2000
+80          2600
+100         3000
+*/
+void SetPWM(uint16_t rpm) {
+
+    // Pick the level closest to the requested rpm (borders are in the middle between the levels)
+    uint32_t percent;
+    if      (rpm < 350)  percent = 0;
+    else if (rpm < 1050) percent = 20;
+    else if (rpm < 1700) percent = 40;
+    else if (rpm < 2300) percent = 60;
+    else if (rpm < 2800) percent = 80;
+    else                 percent = 100;
+
+    uint32_t period = __HAL_TIM_GET_AUTORELOAD(&htim1);   // 3359 -> 25 kHz
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, period * percent / 100);
+}
+
+
+
+void ApplyOutPuts(SystemStatus_t Status) {
+    switch (Status) {
+        case SystemStatus_t::Waiting:
+
+        SetPWM(0);
+            break;
+        case SystemStatus_t::Running:
+
+        SetPWM(targetRPM);
+            break;
+        case SystemStatus_t::EmptyContainer:
+
+        SetPWM(0);
+            break;
+        case SystemStatus_t::Error:
+
+        SetPWM(0);
+            break;
+    }
+}
+
+
+
+
+
 class Humidifier {
 
 public:
@@ -86,18 +139,20 @@ private:
     bool systemFailed_ = false;
     bool sensorFailed_ = false;
 
-    // Set inicialization status for: Waiting
+    // Set initialization status for: Waiting
     SystemStatus_t systemStatus_ = SystemStatus_t::Waiting;
 };
 
 
+
 void app_main() {
 
-    Humidifier AirHumidifier(50.0f); // Set inicialization humidity as 50%
+    Humidifier AirHumidifier(50.0f); // Set initialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
     uint8_t sensorFails = 0;
 
     espUartReceiver.Receive();   // arm the first byte, the interrupt does the rest
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
     while (1) {
 
@@ -141,6 +196,8 @@ if (espUartReceiver.hasLine()) {
         AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
 
         AirHumidifier.updateStatus();
+
+        ApplyOutPuts(AirHumidifier.getSystemStatus());
 
         HAL_IWDG_Refresh(&hiwdg);
 
