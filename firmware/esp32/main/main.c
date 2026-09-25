@@ -39,4 +39,13 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_MQTT_START");
     ESP_ERROR_CHECK(mqtt_app_start());
 
+    char stm32_message[128];
+
+    while (1) {
+        int len = uart_receive_message(stm32_message, sizeof(stm32_message));
+        if (len > 0) {
+        esp_publish_data(stm32_message, len);
+        }
+    }
+
 }

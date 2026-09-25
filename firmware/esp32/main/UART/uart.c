@@ -41,3 +41,40 @@ esp_err_t uart_send_message(const char *data, size_t len)
     }
     return ESP_OK;
 }
+
+/* Reads one line (up to '\n') sent by STM32 into buf. Blocks until a whole line arrives.
+ * Returns line length (without '\n'), or -1 if the line did not fit in buf. */
+int uart_receive_message(char *buf, size_t size)
+{
+    size_t idx = 0;
+    bool overflow = false;
+    uint8_t ch;
+
+    while (1) {
+        // Wait for one byte (blocks the task, does not waste CPU)
+        if (uart_read_bytes(UART_NUM_1, &ch, 1, portMAX_DELAY) != 1) {
+            continue;
+        }
+
+        if (ch == '\n') {               // end of message
+            if (overflow) {
+                return -1;              // message was too long, drop it
+            }
+            if (idx == 0) {
+                continue;               // empty line, ignore
+            }
+            buf[idx] = '\0';            // make it a C string
+            return (int)idx;
+        }
+
+        if (ch == '\r') {               // ignore carriage return, if STM32 sends "\r\n"
+            continue;
+        }
+
+        if (idx < size - 1) {
+            buf[idx++] = (char)ch;      // store the byte
+        } else {
+            overflow = true;            // buffer full, skip the rest until '\n'
+        }
+    }
+}

@@ -35,8 +35,6 @@
 
 esp_mqtt_client_handle_t client = NULL;
 
-
-
 static const char *TAG = "mqtt";
 
 extern const char amazon_root_pem[] asm("_binary_AmazonRootCA1_pem_start");
@@ -119,24 +117,21 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-// esp_err_t esp_publish_data(int hum, int rpm) {
-
-//     char json_buffer[64];
-//     int len = snprintf(json_buffer, sizeof(json_buffer), "{\"Humidity\": \"%d\", \"RPM\": \"%d\"}", hum, rpm);
-
-//     if (len < 0 || len >= sizeof(json_buffer)) {
-//         return ESP_FAIL;
-//     }
-//     int msg = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH, json_buffer, len, 0, 0);
-
-//     if (msg < 0) {
-//         return ESP_FAIL;
-//     }
-
-//     return ESP_OK;
-// }
-
-
+esp_err_t esp_publish_data(const char *json, size_t len)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_STATE;       // MQTT not started yet
+    }
+    if (!json_is_valid(json, len)) {
+        ESP_LOGW(TAG, "Invalid JSON, not published");
+        return ESP_ERR_INVALID_ARG;
+    }
+    int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH, json, len, 0, 0);
+    if (msg_id < 0) {
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
 
 esp_err_t mqtt_app_start(void)
 {

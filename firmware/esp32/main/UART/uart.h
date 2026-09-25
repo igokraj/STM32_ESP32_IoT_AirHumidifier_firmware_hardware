@@ -6,3 +6,5 @@
 void uart_init(void);
 
 esp_err_t uart_send_message(const char *data, size_t len);
+
+int uart_receive_message(char *buf, size_t size);
