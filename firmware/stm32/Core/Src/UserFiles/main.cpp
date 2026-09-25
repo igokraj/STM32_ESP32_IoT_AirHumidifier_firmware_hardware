@@ -4,6 +4,10 @@
 #include "i2c.h"
 #include "humiditySensor.hpp"
 #include "iwdg.h"
+#include "tim.h"
+#include "usart.h"
+#include "uartReceiver.hpp"
+#include "jsonParser.hpp"
 
 enum class SystemStatus_t {
     Waiting,
@@ -12,6 +16,19 @@ enum class SystemStatus_t {
     Error
 };
 
+uint16_t targetRPM = 0;
+
+// Global, because the HAL callbacks below need to reach it
+UartReceiver espUartReceiver(&huart1);
+
+extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart == espUartReceiver.handle()) espUartReceiver.onByte();
+}
+
+// Overrun or noise stops the reception, so start it again
+extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+    if (huart == espUartReceiver.handle()) espUartReceiver.Receive();
+}
 
 class Humidifier {
 
@@ -36,10 +53,6 @@ public:
         containerEmpty_ = containerEmpty;
     }
 
-    void setSystemFailed(bool systemFailed) {
-        systemFailed_ = systemFailed;
-    }
-
     void setSensorFailed(bool sensorFailed) {
         sensorFailed_ = sensorFailed;
     }
@@ -47,7 +60,7 @@ public:
     
     void updateStatus() {
 
-        if (systemFailed_ || sensorFailed_) {
+        if (sensorFailed_) {
             systemStatus_ = SystemStatus_t::Error;
             return;
         }
@@ -82,12 +95,35 @@ void app_main() {
 
     Humidifier AirHumidifier(50.0f); // Set inicialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
+    uint8_t sensorFails = 0;
+
+    espUartReceiver.Receive();   // arm the first byte, the interrupt does the rest
 
     while (1) {
 
-        uint8_t sensorFails = 0;
+if (espUartReceiver.hasLine()) {
 
-        AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
+    if (auto hum = jsonNumber(espUartReceiver.line(), "hum")) {
+        if (*hum >= 0.0f && *hum <= 100.0f) {
+            AirHumidifier.setDesiredHum(*hum);
+        }
+    }
+
+    if (auto rpm = jsonNumber(espUartReceiver.line(), "rpm")) {
+        if (*rpm >= 3000.0f) {
+            targetRPM = 3000;
+        }
+        else if (*rpm > 0.0f) {
+            targetRPM = static_cast<uint16_t>(*rpm);
+        }
+        else {
+            targetRPM = 0;
+        }
+    }
+
+    espUartReceiver.release();   // zwolnij bufor, żeby mogła przyjść następna wiadomość
+}
+
 
         float hum = HTU21D.readHumidity();
         if (hum == -1.0f) {
@@ -98,10 +134,11 @@ void app_main() {
             sensorFails = 0;
             AirHumidifier.setCurrentHum(hum);
         }
-
+        
+        
         AirHumidifier.setSensorFailed(sensorFails >= 3);
 
-        AirHumidifier.setCurrentHum(HTU21D.readHumidity());
+        AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
 
         AirHumidifier.updateStatus();
 

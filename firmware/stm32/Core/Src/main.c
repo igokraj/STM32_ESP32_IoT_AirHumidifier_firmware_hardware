@@ -20,12 +20,9 @@
 #include "main.h"
 #include "i2c.h"
 #include "iwdg.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_tim.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
