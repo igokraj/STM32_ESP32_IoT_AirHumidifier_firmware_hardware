@@ -172,7 +172,6 @@ static volatile uint32_t lastPulseTime = 0;  // time of the last pulse (ms)
 static volatile uint32_t period = 0;         // time between the last two pulses (ticks)
 // If for example period -> 6000 ticks that means that 60000 us had passed, which is 0.06 s
 
-
 extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) {
 
