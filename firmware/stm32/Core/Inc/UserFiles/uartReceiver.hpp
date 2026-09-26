@@ -1,6 +1,7 @@
 #pragma once
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_uart.h"
+#include <stdio.h>
 
 class UartReceiver {
 
@@ -30,6 +31,23 @@ class UartReceiver {
             }
         }
         Receive();                                 // arm the next byte
+    }
+
+    /* Sends one JSON line: {"Humidity":45.30,"Status":1,"RPM":2000}\n
+    status is the SystemStatus_t cast to int (the enum is defined in main.cpp) */
+    void Send(float hum, int status, int rpm) {
+
+        char buf[64];
+
+        int len = snprintf(buf, sizeof(buf),
+                           "{\"Humidity\":%.2f,\"Status\":%d,\"RPM\":%d}\n",
+                           hum, status, rpm);
+
+        if (len < 0 || len >= static_cast<int>(sizeof(buf))) {
+            return;                                  // formatting error or message too long
+        }
+
+        HAL_UART_Transmit(huart_, reinterpret_cast<uint8_t *>(buf), len, 100);
     }
 
 
