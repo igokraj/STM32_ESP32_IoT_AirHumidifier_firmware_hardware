@@ -9,8 +9,6 @@
 #include "uart.hpp"
 #include "jsonParser.hpp"
 
-
-
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
 
@@ -25,17 +23,6 @@ enum class SystemStatus_t {
     EmptyContainer,
     Error
 };
-
-// ***** TESTING *********
-
-SystemStatus_t test_status;
-float humidity_test;
-
-uint32_t test_RPM;
-
-bool Empty_test;
-
-// ***********************
 
 // Global, because the HAL callbacks below need to reach it
 Uart espUart(&huart1);
@@ -90,14 +77,10 @@ uint32_t SetPWM(uint16_t RPM_lvl) {
 
 
 void ApplyOutPuts(SystemStatus_t Status) {
-
-    test_status = Status;
-
     switch (Status) {
         case SystemStatus_t::Waiting:
 
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
-
             break;
         case SystemStatus_t::Running:
 
@@ -180,7 +163,7 @@ public:
 
 void app_main() {
 
-    Humidifier AirHumidifier(60.0f); // Set initialization humidity as 50%
+    Humidifier AirHumidifier(50.0f); // Set initialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
     uint8_t sensorFails = 0;
 
@@ -225,28 +208,19 @@ if (espUart.hasLine()) {
             AirHumidifier.setCurrentHum(hum);
             AirHumidifier.setSensorFailed(false);
         }
-        // TEST
-        humidity_test = hum;
 
         
         if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
         AirHumidifier.setContainerEmpty(true);
-        Empty_test = true; // TEST
         }
         else {
             AirHumidifier.setContainerEmpty(false);
-
-            Empty_test = false; // TEST
         } 
         
 
         AirHumidifier.updateStatus();
 
         ApplyOutPuts(AirHumidifier.getSystemStatus());
-
-        // TEST
-        test_RPM = CalculateRPM();
-        // ******
 
         now = HAL_GetTick();
         if (now - last_uart_mag > 5000) {
