@@ -178,7 +178,7 @@ public:
 
 void app_main() {
 
-    Humidifier AirHumidifier(50.0f); // Set initialization humidity as 50%
+    Humidifier AirHumidifier(30.0f); // Set initialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
     uint8_t sensorFails = 0;
 
