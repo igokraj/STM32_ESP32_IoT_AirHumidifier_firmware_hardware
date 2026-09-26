@@ -3,11 +3,11 @@
 #include "stm32f4xx_hal_uart.h"
 #include <stdio.h>
 
-class UartReceiver {
+class Uart {
 
     public:
 
-    explicit UartReceiver(UART_HandleTypeDef *huart) : huart_(huart) {}
+    explicit Uart(UART_HandleTypeDef *huart) : huart_(huart) {}
 
     void Receive() {
         HAL_UART_Receive_IT(huart_, &rxByte_, 1);
@@ -35,13 +35,13 @@ class UartReceiver {
 
     /* Sends one JSON line: {"Humidity":45.30,"Status":1,"RPM":2000}\n
     status is the SystemStatus_t cast to int (the enum is defined in main.cpp) */
-    void Send(float hum, int status, int rpm) {
+    void Send(float hum, int status, uint16_t rpm) {
 
         char buf[64];
 
         int len = snprintf(buf, sizeof(buf),
                            "{\"Humidity\":%.2f,\"Status\":%d,\"RPM\":%d}\n",
-                           hum, status, rpm);
+                            hum, status, rpm);
 
         if (len < 0 || len >= static_cast<int>(sizeof(buf))) {
             return;                                  // formatting error or message too long

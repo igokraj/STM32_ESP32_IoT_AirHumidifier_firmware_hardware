@@ -164,9 +164,9 @@ void SystemClock_Config(void)
 
 // Timer tick -> 1 tick = 10 us
 
-static volatile uint32_t lastCapture = 0;    // (ticks)
-static volatile uint32_t lastPulseTime = 0;  // time of the last pulse (ms)
-static volatile uint32_t period = 0;         // time between the last two pulses (ticks)
+volatile uint32_t lastCapture = 0;    // (ticks)
+volatile uint32_t lastPulseTime = 0;  // time of the last pulse (ms)
+volatile uint32_t period = 0;         // time between the last two pulses (ticks)
 // If for example period -> 6000 ticks that means that 60000 us had passed, which is 0.06 s
 
 extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {

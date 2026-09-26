@@ -6,7 +6,7 @@
 #include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
-#include "uartReceiver.hpp"
+#include "uart.hpp"
 #include "jsonParser.hpp"
 
 #define TIM1_ARR 3359
@@ -22,17 +22,39 @@ enum class SystemStatus_t {
 };
 
 // Global, because the HAL callbacks below need to reach it
-UartReceiver espUartReceiver(&huart1);
+Uart espUart(&huart1);
 
 extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    if (huart == espUartReceiver.handle()) espUartReceiver.onByte();
+    if (huart == espUart.handle()) espUart.onByte();
 }
 
 // Overrun or noise stops the reception, so start it again
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-    if (huart == espUartReceiver.handle()) espUartReceiver.Receive();
+    if (huart == espUart.handle()) espUart.Receive();
 }
 
+
+#define TIM3_TICK_HZ        100000u   // 84 MHz / (839 + 1) -> 1 tick = 10 us
+#define FAN_PULSES_PER_REV  2u        // check in the fan datasheet, most PC fans give 2
+#define FAN_STOP_TIMEOUT_MS 500u      // no pulse for this long -> fan stopped
+
+// Values from the TIM3 interrupt in main.c
+extern volatile uint32_t lastPulseTime;
+extern volatile uint32_t period;
+
+uint16_t CalculateRPM() {
+
+    // Copy the values, so both come from the same moment
+    uint32_t p = period;
+    uint32_t last = lastPulseTime;
+
+    if (p == 0 || (HAL_GetTick() - last > FAN_STOP_TIMEOUT_MS)) {
+        return 0;
+    }
+
+    // Calculate the RPM
+    return (60u * TIM3_TICK_HZ) / (p * FAN_PULSES_PER_REV);
+}
 
 
 /*
@@ -142,20 +164,20 @@ void app_main() {
     HumiditySensor HTU21D(&hi2c1, 0x40); 
     uint8_t sensorFails = 0;
 
-    espUartReceiver.Receive();   // arm the first byte, the interrupt does the rest
+    espUart.Receive();   // arm the first byte, the interrupt does the rest
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
     while (1) {
 
-if (espUartReceiver.hasLine()) {
+if (espUart.hasLine()) {
 
-    if (auto hum = jsonNumber(espUartReceiver.line(), "hum")) {
+    if (auto hum = jsonNumber(espUart.line(), "hum")) {
         if (*hum >= 0.0f && *hum <= 100.0f) {
             AirHumidifier.setDesiredHum(*hum);
         }
     }
 
-    if (auto rpm_lvl = jsonNumber(espUartReceiver.line(), "rpm_lvl")) {
+    if (auto rpm_lvl = jsonNumber(espUart.line(), "rpm_lvl")) {
         lvl = static_cast<int>(*rpm_lvl);
         if (lvl > 5) {
             lvl = 5;
@@ -165,7 +187,7 @@ if (espUartReceiver.hasLine()) {
         }
     }
 
-    espUartReceiver.release();   // Release the buffer to the UART can send another message
+    espUart.release();   // Release the buffer to the UART can send another message
 }
 
 
@@ -187,6 +209,9 @@ if (espUartReceiver.hasLine()) {
         AirHumidifier.updateStatus();
 
         ApplyOutPuts(AirHumidifier.getSystemStatus());
+
+        espUart.Send(hum, static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
+
 
         HAL_IWDG_Refresh(&hiwdg);
 
