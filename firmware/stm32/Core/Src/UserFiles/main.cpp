@@ -9,14 +9,17 @@
 #include "uartReceiver.hpp"
 #include "jsonParser.hpp"
 
+#define TIM1_ARR 3359
+
+// Desired RPM_lvl;
+int lvl = 0;
+
 enum class SystemStatus_t {
     Waiting,
     Running,
     EmptyContainer,
     Error
 };
-
-uint16_t targetRPM = 0;
 
 // Global, because the HAL callbacks below need to reach it
 UartReceiver espUartReceiver(&huart1);
@@ -33,27 +36,17 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 
 
 /*
-PWM (%)  |  RPM
-0           0
-20          700
-40          1400
-60          2000
-80          2600
-100         3000
+RPM_lvl  |  PWM (%)   |  RPM
+0        |  0         |  0
+1        |  20        |  700
+2        |  40        |  1400
+3        |  60        |  2000
+4        |  80        |  2600
+5        |  100       |  3000
 */
-void SetPWM(uint16_t rpm) {
+uint32_t SetPWM(uint16_t RPM_lvl) {
 
-    // Pick the level closest to the requested rpm (borders are in the middle between the levels)
-    uint32_t percent;
-    if      (rpm < 350)  percent = 0;
-    else if (rpm < 1050) percent = 20;
-    else if (rpm < 1700) percent = 40;
-    else if (rpm < 2300) percent = 60;
-    else if (rpm < 2800) percent = 80;
-    else                 percent = 100;
-
-    uint32_t period = __HAL_TIM_GET_AUTORELOAD(&htim1);   // 3359 -> 25 kHz
-    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, period * percent / 100);
+    return (TIM1_ARR + 1) * RPM_lvl / 5;
 }
 
 
@@ -62,25 +55,22 @@ void ApplyOutPuts(SystemStatus_t Status) {
     switch (Status) {
         case SystemStatus_t::Waiting:
 
-        SetPWM(0);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
             break;
         case SystemStatus_t::Running:
 
-        SetPWM(targetRPM);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SetPWM(lvl));
             break;
         case SystemStatus_t::EmptyContainer:
 
-        SetPWM(0);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
             break;
         case SystemStatus_t::Error:
 
-        SetPWM(0);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
             break;
     }
 }
-
-
-
 
 
 class Humidifier {
@@ -135,6 +125,7 @@ private:
     float currentHum_ = 0.0f;   // measured humidity [%]
     float desiredHum_;          // setpoint humidity [%]
 
+    // Set these bool's as false when initialized
     bool containerEmpty_ = false;
     bool systemFailed_ = false;
     bool sensorFailed_ = false;
@@ -164,19 +155,17 @@ if (espUartReceiver.hasLine()) {
         }
     }
 
-    if (auto rpm = jsonNumber(espUartReceiver.line(), "rpm")) {
-        if (*rpm >= 3000.0f) {
-            targetRPM = 3000;
+    if (auto rpm_lvl = jsonNumber(espUartReceiver.line(), "rpm_lvl")) {
+        lvl = static_cast<int>(*rpm_lvl);
+        if (lvl > 5) {
+            lvl = 5;
         }
-        else if (*rpm > 0.0f) {
-            targetRPM = static_cast<uint16_t>(*rpm);
-        }
-        else {
-            targetRPM = 0;
+        else if (lvl < 0) {
+            lvl = 0;
         }
     }
 
-    espUartReceiver.release();   // zwolnij bufor, żeby mogła przyjść następna wiadomość
+    espUartReceiver.release();   // Release the buffer to the UART can send another message
 }
 
 
