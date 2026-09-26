@@ -31,6 +31,8 @@ enum class SystemStatus_t {
 SystemStatus_t test_status;
 float humidity_test;
 
+bool Empty_test;
+
 // ***********************
 
 // Global, because the HAL callbacks below need to reach it
@@ -219,11 +221,22 @@ if (espUart.hasLine()) {
         else {
             sensorFails = 0;
             AirHumidifier.setCurrentHum(hum);
+            AirHumidifier.setSensorFailed(false);
         }
         // TEST
         humidity_test = hum;
 
-        AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
+        
+        if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
+        AirHumidifier.setContainerEmpty(true);
+        Empty_test = true; // TEST
+        }
+        else {
+            AirHumidifier.setContainerEmpty(false);
+
+            Empty_test = false; // TEST
+        } 
+        
 
         AirHumidifier.updateStatus();
 
