@@ -96,8 +96,15 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+
+// FOR TESITNG
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+// *********
+
   HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_4);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   app_main();
   /* USER CODE END 2 */
 
@@ -178,6 +185,8 @@ extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
     /* Ticks since the previous pulse. The 0xFFFF mask keeps the result correct even if
     the 16-bit counter wrapped around between the two pulses. Example:
     60000 ... 65535 -> 0 ... 500, so period = (65536 - 60000) + 500 = 6036 ticks */
+
+
     period = (now - lastCapture) & 0xFFFF;
 
     // Remember this pulse for the next calculation
