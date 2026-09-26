@@ -9,6 +9,8 @@
 #include "uart.hpp"
 #include "jsonParser.hpp"
 
+
+
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
 
@@ -23,6 +25,13 @@ enum class SystemStatus_t {
     EmptyContainer,
     Error
 };
+
+// ***** TESTING *********
+
+SystemStatus_t test_status;
+float humidity_test;
+
+// ***********************
 
 // Global, because the HAL callbacks below need to reach it
 Uart espUart(&huart1);
@@ -77,10 +86,14 @@ uint32_t SetPWM(uint16_t RPM_lvl) {
 
 
 void ApplyOutPuts(SystemStatus_t Status) {
+
+    test_status = Status;
+
     switch (Status) {
         case SystemStatus_t::Waiting:
 
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+
             break;
         case SystemStatus_t::Running:
 
@@ -196,16 +209,19 @@ if (espUart.hasLine()) {
 
         float hum = HTU21D.readHumidity();
         if (hum == -1.0f) {
-            if (sensorFails < 3)
+            if (sensorFails < 3) {
             sensorFails += 1;
+            if (sensorFails == 3) {
+                AirHumidifier.setSensorFailed(true);
+            }
+        }
         }
         else {
             sensorFails = 0;
             AirHumidifier.setCurrentHum(hum);
         }
-
-        
-        AirHumidifier.setSensorFailed(sensorFails >= 3);
+        // TEST
+        humidity_test = hum;
 
         AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
 
