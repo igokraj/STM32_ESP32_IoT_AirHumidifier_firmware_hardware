@@ -9,6 +9,9 @@
 #include "uart.hpp"
 #include "jsonParser.hpp"
 
+static uint32_t now = 0;
+static uint32_t last_uart_mag = 0;
+
 #define TIM1_ARR 3359
 
 // Desired RPM_lvl;
@@ -143,7 +146,7 @@ public:
         }
     }
 
-private:
+    private:
     float currentHum_ = 0.0f;   // measured humidity [%]
     float desiredHum_;          // setpoint humidity [%]
 
@@ -200,7 +203,7 @@ if (espUart.hasLine()) {
             sensorFails = 0;
             AirHumidifier.setCurrentHum(hum);
         }
-        
+
         
         AirHumidifier.setSensorFailed(sensorFails >= 3);
 
@@ -210,8 +213,11 @@ if (espUart.hasLine()) {
 
         ApplyOutPuts(AirHumidifier.getSystemStatus());
 
+        now = HAL_GetTick();
+        if (now - last_uart_mag > 5000) {
         espUart.Send(hum, static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
-
+        last_uart_mag = now;
+        }
 
         HAL_IWDG_Refresh(&hiwdg);
 

@@ -18,7 +18,7 @@ public:
             return -1.0f;
         }
 
-        uint16_t raw = ((data[0] << 8) | data[1]) & 0xFFFC; 
+        uint16_t raw = ((data[0] << 8) | data[1]) & 0xFFFC;
         return -6.0f + (125.0f * raw / 65536.0f);
     }
 
