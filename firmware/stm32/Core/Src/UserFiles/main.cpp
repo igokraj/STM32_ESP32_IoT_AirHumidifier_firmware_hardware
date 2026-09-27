@@ -183,7 +183,6 @@ void app_main() {
     uint8_t sensorFails = 0;
 
     espUart.Receive();   // arm the first byte, the interrupt does the rest
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
     while (1) {
 
