@@ -128,8 +128,10 @@ esp_err_t esp_publish_data(const char *json, size_t len)
     }
     int msg_id = esp_mqtt_client_publish(client, MQTT_TOPIC_PUBLISH, json, len, 0, 0);
     if (msg_id < 0) {
+        ESP_LOGE(TAG, "Publish failed");
         return ESP_FAIL;
     }
+    ESP_LOGI(TAG, "Published");
     return ESP_OK;
 }
 
