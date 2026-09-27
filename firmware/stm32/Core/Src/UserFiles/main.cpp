@@ -15,7 +15,10 @@
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
-#define TIM1_ARR 3359
+
+// TIM1: Prescaler 83, Period 19999 -> 84 MHz / 84 = 1 MHz tick (1 tick = 1 us), 20 ms period (50 Hz) - SG90 servo
+#define SERVO_MIN_PULSE_US 1000u   // 0 deg
+#define SERVO_MAX_PULSE_US 2000u   // 180 deg
 
 // Desired RPM_lvl;
 int lvl = 0;
@@ -64,17 +67,17 @@ uint16_t CalculateRPM() {
 
 
 /*
-RPM_lvl  |  PWM (%)   |  RPM
-0        |  0         |  0
-1        |  20        |  700
-2        |  40        |  1400
-3        |  60        |  2000
-4        |  80        |  2600
-5        |  100       |  3000
+RPM_lvl  |  Servo angle  |  Pulse (us)
+0        |  0 deg        |  1000
+1        |  36 deg       |  1200
+2        |  72 deg       |  1400
+3        |  108 deg      |  1600
+4        |  144 deg      |  1800
+5        |  180 deg      |  2000
 */
 uint32_t SetPWM(uint16_t RPM_lvl) {
 
-    return (TIM1_ARR + 1) * RPM_lvl / 5;
+    return SERVO_MIN_PULSE_US + (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US) * RPM_lvl / 5;
 }
 
 DigitalOutput RedLed(Red_LED_GPIO_Port, Red_LED_Pin);
