@@ -9,6 +9,9 @@ mid-transfer by a microcontroller reset and SDA got stuck low. */
 
 void I2C1_BusRecovery(void);
 
+/* Full recovery for a bus that jammed during normal operation */
+void I2C1_Reinit(void);
+
 #ifdef __cplusplus
 }
 #endif

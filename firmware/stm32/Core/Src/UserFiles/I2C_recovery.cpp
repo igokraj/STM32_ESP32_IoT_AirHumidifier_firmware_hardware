@@ -1,6 +1,7 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
 #include "I2C_recovery.hpp"
+#include "i2c.h"
 
 /* Recovers the I2C bus at startup, in case the transmission was cut off
 mid-transfer by a microcontroller reset and SDA got stuck low. */
@@ -58,4 +59,11 @@ void I2C1_BusRecovery(void) {
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
+// Full recovery for a bus that jammed during normal operation
+void I2C1_Reinit(void) {
+  HAL_I2C_DeInit(&hi2c1);
+  I2C1_BusRecovery();
+  MX_I2C1_Init();
 }

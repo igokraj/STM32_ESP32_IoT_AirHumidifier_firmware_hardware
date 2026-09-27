@@ -11,6 +11,7 @@
 #include "jsonParser.hpp"
 #include "humiditySensor.hpp"
 #include "digital_output.hpp"
+#include "I2C_recovery.hpp"
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
@@ -215,6 +216,9 @@ if (espUart.hasLine()) {
             if (sensorFails < 3) {
             sensorFails += 1;
             if (sensorFails == 3) {
+                // This function is used to recover a jammed I2C bus during normal program operation (not after a restart).
+                I2C1_Reinit();         
+                sensorFails = 0;
                 AirHumidifier.setSensorFailed(true);
             }
         }
