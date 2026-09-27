@@ -11,9 +11,6 @@
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
-
-
-
 #define TIM1_ARR 3359
 
 // Desired RPM_lvl;
@@ -120,6 +117,10 @@ public:
         return systemStatus_;
     }
 
+    float getDesiredHum() const {
+        return desiredHum_;
+    }
+
     // Setters
     void setCurrentHum(float currentHum) {
         currentHum_ = currentHum;
@@ -157,8 +158,6 @@ public:
             systemStatus_ = SystemStatus_t::Waiting;
         }
 
-        // TEST
-        test_status =  systemStatus_;
     }
 
     private:
@@ -241,7 +240,7 @@ if (espUart.hasLine()) {
 
         now = HAL_GetTick();
         if (now - last_uart_mag > 5000) {
-        espUart.Send(hum, static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
+        espUart.Send(hum, AirHumidifier.getDesiredHum(), static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
         last_uart_mag = now;
         }
 
