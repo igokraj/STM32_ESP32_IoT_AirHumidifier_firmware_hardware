@@ -10,6 +10,7 @@
 // User files
 #include "jsonParser.hpp"
 #include "humiditySensor.hpp"
+#include "digital_output.hpp"
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
@@ -75,25 +76,35 @@ uint32_t SetPWM(uint16_t RPM_lvl) {
     return (TIM1_ARR + 1) * RPM_lvl / 5;
 }
 
-
+DigitalOutput RedLed(Red_LED_GPIO_Port, Red_LED_Pin);
+DigitalOutput GreenLed(Green_LED_GPIO_Port, Green_LED_Pin);
+DigitalOutput BlueLed(Blue_LED_GPIO_Port, Blue_LED_Pin);
 
 void ApplyOutPuts(SystemStatus_t Status) {
     switch (Status) {
         case SystemStatus_t::Waiting:
-
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+            RedLed.off();
+            BlueLed.off();
+            GreenLed.off();
             break;
         case SystemStatus_t::Running:
-
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, SetPWM(lvl));
+            RedLed.off();
+            BlueLed.off();
+            GreenLed.on();
             break;
         case SystemStatus_t::EmptyContainer:
-
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+            RedLed.off();
+            BlueLed.on();
+            GreenLed.off();
             break;
         case SystemStatus_t::Error:
-
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+            RedLed.on();
+            BlueLed.off();
+            GreenLed.off();
             break;
     }
 }
