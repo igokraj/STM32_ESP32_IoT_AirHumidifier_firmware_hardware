@@ -2,12 +2,14 @@
 #include "stm32f4xx_hal.h"
 #include "main.h"
 #include "i2c.h"
-#include "humiditySensor.hpp"
 #include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
 #include "uart.hpp"
+
+// User files
 #include "jsonParser.hpp"
+#include "humiditySensor.hpp"
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
@@ -22,15 +24,6 @@ enum class SystemStatus_t {
     EmptyContainer,
     Error
 };
-
-// TEST
-
-uint32_t test_pwm = 0;
-
-float hum_test;
-
-SystemStatus_t test_status;
-// *********
 
 // Global, because the HAL callbacks below need to reach it
 Uart espUart(&huart1);
@@ -79,7 +72,6 @@ RPM_lvl  |  PWM (%)   |  RPM
 */
 uint32_t SetPWM(uint16_t RPM_lvl) {
 
-    test_pwm = (TIM1_ARR + 1) * RPM_lvl / 5;
     return (TIM1_ARR + 1) * RPM_lvl / 5;
 }
 
@@ -221,11 +213,7 @@ if (espUart.hasLine()) {
             AirHumidifier.setCurrentHum(hum);
             AirHumidifier.setSensorFailed(false);
         }
-
-        // TEST
-        hum_test = hum;
-
-        
+     
         if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
         AirHumidifier.setContainerEmpty(true);
         }

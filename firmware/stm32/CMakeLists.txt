@@ -36,7 +36,8 @@ enable_language(C CXX ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
-    Core/Inc/UserFiles/humiditySensor.hpp)
+    Core/Inc/UserFiles/humiditySensor.hpp
+    Core/Src/UserFiles/I2C_recovery.cpp)
 
 # main.c (CubeMX) is compiled as C++, so extern "C" and other C++ features work in it
 set_source_files_properties(${CMAKE_SOURCE_DIR}/Core/Src/main.c PROPERTIES LANGUAGE CXX)

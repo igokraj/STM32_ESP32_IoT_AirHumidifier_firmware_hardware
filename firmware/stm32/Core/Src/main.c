@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "main.hpp"
+#include "I2C_recovery.hpp"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +94,7 @@ int main(void)
   MX_IWDG_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  I2C1_BusRecovery();
   MX_I2C1_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
