@@ -35,13 +35,13 @@ class Uart {
 
     /* Sends one JSON line: {"Humidity":45.30,"Status":1,"RPM":2000}\n
     status is the SystemStatus_t cast to int (the enum is defined in main.cpp) */
-    void Send(float hum, int status, uint16_t rpm) {
+    void Send(float CurrentHum, float DesiredHum, int status, uint16_t rpm) {
 
-        char buf[64];
+        char buf[96];
 
         int len = snprintf(buf, sizeof(buf),
-                           "{\"Humidity\":%.2f,\"Status\":%d,\"RPM\":%d}\n",
-                            hum, status, rpm);
+                           "{\"CurrentHumidity\":%.2f,\"SetHum\":%.2f,\"Status\":%d,\"RPM\":%d}\n",
+                            CurrentHum, DesiredHum, status, rpm);
 
         if (len < 0 || len >= static_cast<int>(sizeof(buf))) {
             return;                                  // formatting error or message too long

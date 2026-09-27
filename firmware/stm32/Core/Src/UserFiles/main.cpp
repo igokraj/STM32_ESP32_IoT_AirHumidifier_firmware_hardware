@@ -2,16 +2,17 @@
 #include "stm32f4xx_hal.h"
 #include "main.h"
 #include "i2c.h"
-#include "humiditySensor.hpp"
 #include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
 #include "uart.hpp"
+
+// User files
 #include "jsonParser.hpp"
+#include "humiditySensor.hpp"
 
 static uint32_t now = 0;
 static uint32_t last_uart_mag = 0;
-
 #define TIM1_ARR 3359
 
 // Desired RPM_lvl;
@@ -108,6 +109,10 @@ public:
         return systemStatus_;
     }
 
+    float getDesiredHum() const {
+        return desiredHum_;
+    }
+
     // Setters
     void setCurrentHum(float currentHum) {
         currentHum_ = currentHum;
@@ -144,6 +149,7 @@ public:
         else if (currentHum_ >= desiredHum_) {
             systemStatus_ = SystemStatus_t::Waiting;
         }
+
     }
 
     private:
@@ -163,12 +169,11 @@ public:
 
 void app_main() {
 
-    Humidifier AirHumidifier(50.0f); // Set initialization humidity as 50%
+    Humidifier AirHumidifier(70.0f); // Set initialization humidity as 50%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
     uint8_t sensorFails = 0;
 
     espUart.Receive();   // arm the first byte, the interrupt does the rest
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 
     while (1) {
 
@@ -196,18 +201,26 @@ if (espUart.hasLine()) {
 
         float hum = HTU21D.readHumidity();
         if (hum == -1.0f) {
-            if (sensorFails < 3)
+            if (sensorFails < 3) {
             sensorFails += 1;
+            if (sensorFails == 3) {
+                AirHumidifier.setSensorFailed(true);
+            }
+        }
         }
         else {
             sensorFails = 0;
             AirHumidifier.setCurrentHum(hum);
+            AirHumidifier.setSensorFailed(false);
         }
-
+     
+        if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
+        AirHumidifier.setContainerEmpty(true);
+        }
+        else {
+            AirHumidifier.setContainerEmpty(false);
+        } 
         
-        AirHumidifier.setSensorFailed(sensorFails >= 3);
-
-        AirHumidifier.setContainerEmpty(HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_RESET);
 
         AirHumidifier.updateStatus();
 
@@ -215,7 +228,7 @@ if (espUart.hasLine()) {
 
         now = HAL_GetTick();
         if (now - last_uart_mag > 5000) {
-        espUart.Send(hum, static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
+        espUart.Send(hum, AirHumidifier.getDesiredHum(), static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
         last_uart_mag = now;
         }
 
