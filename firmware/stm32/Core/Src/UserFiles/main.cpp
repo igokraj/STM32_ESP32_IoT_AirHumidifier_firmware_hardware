@@ -15,6 +15,9 @@
 
 
 #define TIM1_ARR 3359
+#define UART_MSG_DELAY 10000
+#define HTU21D_DELAY 1000
+
 
 // Desired RPM_lvl;
 int lvl = 0;
@@ -181,8 +184,13 @@ public:
 
 void app_main() {
 
-    static uint32_t now = 0;
-    static uint32_t last_uart_mag = 0;
+    // Delays
+    uint32_t last_uart_mag = 0;
+    uint32_t last_htu21d_mag = HAL_GetTick() - HTU21D_DELAY - 1; // Let the first measurement start right after the start
+
+    // Current hum given by HTU21D.
+    // Passed -1.0f so the program never uses a random value before the first measurement. -1.0f means "no valid reading".
+    float hum = -1.0f;
 
     Humidifier AirHumidifier(70.0f); // Set initial desired humidity to 70%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
@@ -216,8 +224,10 @@ if (espUart.hasLine()) {
     espUart.release();   // Release the buffer so the UART can receive another message
 }
 
+        uint32_t now_htu21d = HAL_GetTick();
         // Read the current humidity (set sensorFailed if the reading is invalid, clear it otherwise)
-        float hum = HTU21D.readHumidity();
+        if (now_htu21d - last_htu21d_mag > HTU21D_DELAY) {
+        hum = HTU21D.readHumidity();
         if (hum == -1.0f) {
             if (sensorFails < 3) {
             sensorFails += 1;
@@ -234,9 +244,10 @@ if (espUart.hasLine()) {
             AirHumidifier.setCurrentHum(hum);
             AirHumidifier.setSensorFailed(false);
         }
+        last_htu21d_mag = now_htu21d;
+    }
      
         // Read the water level
-
         if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
         AirHumidifier.setContainerEmpty(true);
         }
@@ -251,10 +262,10 @@ if (espUart.hasLine()) {
         ApplyOutPuts(AirHumidifier.getSystemStatus());
 
         // Send a message to the ESP32 with the system's current characteristics
-        now = HAL_GetTick();
-        if (now - last_uart_mag > 5000) {
+        uint32_t now_uart = HAL_GetTick();
+        if (now_uart - last_uart_mag > UART_MSG_DELAY) {
         espUart.Send(hum, AirHumidifier.getDesiredHum(), static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
-        last_uart_mag = now;
+        last_uart_mag = now_uart;
         }
 
         HAL_IWDG_Refresh(&hiwdg);
