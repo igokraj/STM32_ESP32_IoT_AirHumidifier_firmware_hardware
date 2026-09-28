@@ -12,12 +12,18 @@
 #include "humiditySensor.hpp"
 #include "digital_output.hpp"
 #include "I2C_recovery.hpp"
+#include "stackWatermark.h"
 
 
 #define TIM1_ARR 3359
 
 // Desired RPM_lvl;
 int lvl = 0;
+
+// Updated every loop iteration, watch this in the debugger instead of calling
+// StackWatermark_GetMaxUsedBytes() from the Watch window (inferior function
+// calls aren't reliably supported over SWD/OpenOCD)
+volatile uint32_t stackUsedBytes = 0;
 
 enum class SystemStatus_t {
     Waiting,
@@ -256,6 +262,8 @@ if (espUart.hasLine()) {
         espUart.Send(hum, AirHumidifier.getDesiredHum(), static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
         last_uart_mag = now;
         }
+
+        stackUsedBytes = StackWatermark_GetMaxUsedBytes();
 
         HAL_IWDG_Refresh(&hiwdg);
 
