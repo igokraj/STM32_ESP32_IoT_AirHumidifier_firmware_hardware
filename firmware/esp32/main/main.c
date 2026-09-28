@@ -15,8 +15,6 @@
 
 static const char *TAG = "AirHumidifier";
 
-
-
 void app_main(void)
 {
 
@@ -42,6 +40,8 @@ void app_main(void)
     char stm32_message[128];
 
     while (1) {
+
+        // Wait for a message from STM32 and send it via MQTT to the AWS Iot Core if it arrives
         int len = uart_receive_message(stm32_message, sizeof(stm32_message));
         if (len > 0) {
         esp_publish_data(stm32_message, len);
