@@ -13,8 +13,7 @@
 #include "digital_output.hpp"
 #include "I2C_recovery.hpp"
 
-static uint32_t now = 0;
-static uint32_t last_uart_mag = 0;
+
 #define TIM1_ARR 3359
 
 // Desired RPM_lvl;
@@ -44,7 +43,7 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 #define FAN_PULSES_PER_REV  2u        // check in the fan datasheet, most PC fans give 2
 #define FAN_STOP_TIMEOUT_MS 500u      // no pulse for this long -> fan stopped
 
-// Values from the TIM3 interrupt in main.c
+// Values from the TIM3 interrupt in main.c USER BEGIN 4
 extern volatile uint32_t lastPulseTime;
 extern volatile uint32_t period;
 
@@ -54,6 +53,7 @@ uint16_t CalculateRPM() {
     uint32_t p = period;
     uint32_t last = lastPulseTime;
 
+    // Return 0 if there are no pulses, or the microcontroller hasn't seen one for FAN_STOP_TIMEOUT_MS
     if (p == 0 || (HAL_GetTick() - last > FAN_STOP_TIMEOUT_MS)) {
         return 0;
     }
@@ -168,12 +168,12 @@ public:
     float currentHum_ = 0.0f;   // measured humidity [%]
     float desiredHum_;          // setpoint humidity [%]
 
-    // Set these bool's as false when initialized
+    // Init these as false
     bool containerEmpty_ = false;
     bool systemFailed_ = false;
     bool sensorFailed_ = false;
 
-    // Set initialization status for: Waiting
+    // Initial status: Waiting
     SystemStatus_t systemStatus_ = SystemStatus_t::Waiting;
 };
 
@@ -181,13 +181,19 @@ public:
 
 void app_main() {
 
-    Humidifier AirHumidifier(70.0f); // Set initialization humidity as 50%
+    static uint32_t now = 0;
+    static uint32_t last_uart_mag = 0;
+
+    Humidifier AirHumidifier(70.0f); // Set initial desired humidity to 70%
     HumiditySensor HTU21D(&hi2c1, 0x40); 
-    uint8_t sensorFails = 0;
+    uint8_t sensorFails = 0; // counter of the incorrect htu21d hum values
 
     espUart.Receive();   // arm the first byte, the interrupt does the rest
 
     while (1) {
+    
+
+// Wait for a JSON message and, once it's ready, parse it into variables (hum and rpm_lvl)
 
 if (espUart.hasLine()) {
 
@@ -207,10 +213,10 @@ if (espUart.hasLine()) {
         }
     }
 
-    espUart.release();   // Release the buffer to the UART can send another message
+    espUart.release();   // Release the buffer so the UART can receive another message
 }
 
-
+        // Read the current humidity (set sensorFailed if the reading is invalid, clear it otherwise)
         float hum = HTU21D.readHumidity();
         if (hum == -1.0f) {
             if (sensorFails < 3) {
@@ -229,6 +235,8 @@ if (espUart.hasLine()) {
             AirHumidifier.setSensorFailed(false);
         }
      
+        // Read the water level
+
         if (HAL_GPIO_ReadPin(Water_level_GPIO_Port, Water_level_Pin) == GPIO_PIN_SET) {
         AirHumidifier.setContainerEmpty(true);
         }
@@ -236,11 +244,13 @@ if (espUart.hasLine()) {
             AirHumidifier.setContainerEmpty(false);
         } 
         
-
+        // Update system status according to the readings above
         AirHumidifier.updateStatus();
 
+        // Apply outputs according to the current system status
         ApplyOutPuts(AirHumidifier.getSystemStatus());
 
+        // Send a message to the ESP32 with the system's current characteristics
         now = HAL_GetTick();
         if (now - last_uart_mag > 5000) {
         espUart.Send(hum, AirHumidifier.getDesiredHum(), static_cast<int>(AirHumidifier.getSystemStatus()), CalculateRPM());
