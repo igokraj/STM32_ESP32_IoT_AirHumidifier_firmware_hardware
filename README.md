@@ -22,25 +22,25 @@ I tested everything on a breadboard without a real fan. To check the RPM measure
 **Breadboard prototype**
 
 <p align="center">
-  <img src="AirHumidifier/hardware/Images/Breadboard.jpg" width="420">
+  <img src="hardware/Images/Breadboard.jpg" width="420">
 </p>
 
 **Schematic**
 
 <p align="center">
-  <img src="AirHumidifier/hardware/Images/Schematic.png" width="800">
+  <img src="hardware/Images/Schematic.png" width="800">
 </p>
 
 **PCB layout and 3D render**
 
 <p align="center">
-  <img src="AirHumidifier/hardware/Images/PCB_layout.png" height="420">
+  <img src="hardware/Images/PCB_layout.png" height="420">
   &nbsp;
-  <img src="AirHumidifier/hardware/Images/Board3D_1.png" height="420">
+  <img src="hardware/Images/Board3D_1.png" height="420">
 </p>
 
 <p align="center">
-  <img src="AirHumidifier/hardware/Images/Board3D_2.png" width="600">
+  <img src="hardware/Images/Board3D_2.png" width="600">
 </p>
 
 ## How it works
